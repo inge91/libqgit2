@@ -39,10 +39,6 @@ MergeOptions::MergeOptions(FavorType favor, Flags flags)
         d.file_favor = GIT_MERGE_FILE_FAVOR_UNION;
         break;
     }
-
-    if (flags.testFlag(FindRenames)) {
-        d.flags = GIT_MERGE_TREE_FIND_RENAMES;
-    }
 }
 
 const git_merge_options* MergeOptions::data() const

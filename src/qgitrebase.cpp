@@ -34,7 +34,7 @@ struct Rebase::Private {
 
     void abort(const Signature &signature)
     {
-        qGitThrow(git_rebase_abort(data(), signature.data()));
+        qGitThrow(git_rebase_abort(data()));
     }
 
     OId commit(const Signature &committer, const Signature &author, const QString &message)
@@ -46,14 +46,14 @@ struct Rebase::Private {
 
     void finish(const Signature &signature)
     {
-        qGitThrow(git_rebase_finish(data(), signature.data(), mOpts.constData()));
+        qGitThrow(git_rebase_finish(data(), signature.data()));
     }
 
     bool next()
     {
         git_rebase_operation *op;
         git_checkout_options *opts = const_cast<git_checkout_options*>(mOpts.checkoutOptions().data());
-        int error = git_rebase_next(&op, data(), opts);
+        int error = git_rebase_next(&op, data());
         if (error == GIT_ITEROVER) {
             return false;
         } else {

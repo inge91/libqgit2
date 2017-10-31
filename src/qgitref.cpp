@@ -82,14 +82,14 @@ Repository Reference::owner() const
 void Reference::setSymbolicTarget(const QString& target, const Signature &signature, const QString &message)
 {
     git_reference* rp;
-    qGitThrow(git_reference_symbolic_set_target(&rp, data(), PathCodec::toLibGit2(target), signature.data(), message.toUtf8()));
+    qGitThrow(git_reference_symbolic_set_target(&rp, data(), PathCodec::toLibGit2(target), message.toUtf8()));
     d = ptr_type(rp, git_reference_free);
 }
 
 void Reference::setTarget(const OId& oid, const Signature &signature, const QString &message)
 {
     git_reference* rp;
-    qGitThrow(git_reference_set_target(&rp, data(), oid.constData(), signature.data(), message.toUtf8()));
+    qGitThrow(git_reference_set_target(&rp, data(), oid.constData(), message.toUtf8()));
     d = ptr_type(rp, git_reference_free);
 }
 

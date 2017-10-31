@@ -1,0 +1,243 @@
+commit 0042e0af45ec98170d773131a7423d7336e9844d
+Author: Inge <inge.becht91@gmail.com>
+Date:   Tue Oct 31 13:17:08 2017 +0100
+
+    Fix.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7709a20..ff0e67a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -45,17 +45,11 @@ if (NOT QT4_BUILD)
+     find_package(Qt5Core QUIET)
+ endif()
+ 
+-if (Qt5Core_FOUND)
+-    message(STATUS "Building with Qt5 support")
+-    find_package(Qt5Core REQUIRED Core Network)
+-    add_definitions(${Qt5Core_DEFINITIONS})
+-    set(CMAKE_CXX_FLAGS "${Qt5Core_EXECUTABLE_COMPILE_FLAGS}")
+-    set(CMAKE_AUTOMOC ON)
+-else()
+-    message(STATUS "Building with Qt4 support")
+-    set(QT_MIN_VERSION "4.6.0")
+-    find_package(Qt4 REQUIRED)
+-endif()
++message(STATUS "Building with Qt5 support")
++find_package(Qt5Core REQUIRED Core Network)
++add_definitions(${Qt5Core_DEFINITIONS})
++set(CMAKE_CXX_FLAGS "${Qt5Core_EXECUTABLE_COMPILE_FLAGS}")
++set(CMAKE_AUTOMOC ON)
+ 
+ 
+ file(STRINGS "qgit2.h" QGIT2_HEADER REGEX "^#define LIBQGIT2_VERSION \"[^\"]*\"$")
+diff --git a/src/private/remotecallbacks.cpp b/src/private/remotecallbacks.cpp
+index 1c0f95c..9a4f62e 100644
+--- a/src/private/remotecallbacks.cpp
++++ b/src/private/remotecallbacks.cpp
+@@ -36,7 +36,7 @@ RemoteCallbacks::RemoteCallbacks(git_remote *remote, RemoteListener *listener, c
+     m_transferProgress(-1)
+ {
+     git_remote_callbacks remoteCallbacks = rawCallbacks();
+-    qGitThrow(git_remote_set_callbacks(remote, &remoteCallbacks));
++   // qGitThrow(git_remote_set_callbacks(remote, &remoteCallbacks));
+ }
+ 
+ RemoteCallbacks::RemoteCallbacks(RemoteListener *listener, const Credentials &credentials) :
+diff --git a/src/qgitcheckoutoptions.cpp b/src/qgitcheckoutoptions.cpp
+index 2aeeb7e..35aebdc 100644
+--- a/src/qgitcheckoutoptions.cpp
++++ b/src/qgitcheckoutoptions.cpp
+@@ -35,9 +35,9 @@ public:
+         case Safe:
+             native.checkout_strategy |= GIT_CHECKOUT_SAFE;
+             break;
+-        case SafeCreate:
+-            native.checkout_strategy |= GIT_CHECKOUT_SAFE_CREATE;
+-            break;
++//        case SafeCreate:
++//            native.checkout_strategy |= GIT_CHECKOUT_SAFE_CREATE;
++//            break;
+         case Force:
+             native.checkout_strategy |= GIT_CHECKOUT_FORCE;
+             break;
+diff --git a/src/qgitmergeoptions.cpp b/src/qgitmergeoptions.cpp
+index 6db40d1..93e8d83 100644
+--- a/src/qgitmergeoptions.cpp
++++ b/src/qgitmergeoptions.cpp
+@@ -39,10 +39,6 @@ MergeOptions::MergeOptions(FavorType favor, Flags flags)
+         d.file_favor = GIT_MERGE_FILE_FAVOR_UNION;
+         break;
+     }
+-
+-    if (flags.testFlag(FindRenames)) {
+-        d.flags = GIT_MERGE_TREE_FIND_RENAMES;
+-    }
+ }
+ 
+ const git_merge_options* MergeOptions::data() const
+diff --git a/src/qgitrebase.cpp b/src/qgitrebase.cpp
+index 96ed829..27ce92f 100644
+--- a/src/qgitrebase.cpp
++++ b/src/qgitrebase.cpp
+@@ -34,7 +34,7 @@ struct Rebase::Private {
+ 
+     void abort(const Signature &signature)
+     {
+-        qGitThrow(git_rebase_abort(data(), signature.data()));
++        qGitThrow(git_rebase_abort(data()));
+     }
+ 
+     OId commit(const Signature &committer, const Signature &author, const QString &message)
+@@ -46,14 +46,14 @@ struct Rebase::Private {
+ 
+     void finish(const Signature &signature)
+     {
+-        qGitThrow(git_rebase_finish(data(), signature.data(), mOpts.constData()));
++        qGitThrow(git_rebase_finish(data(), signature.data()));
+     }
+ 
+     bool next()
+     {
+         git_rebase_operation *op;
+         git_checkout_options *opts = const_cast<git_checkout_options*>(mOpts.checkoutOptions().data());
+-        int error = git_rebase_next(&op, data(), opts);
++        int error = git_rebase_next(&op, data());
+         if (error == GIT_ITEROVER) {
+             return false;
+         } else {
+diff --git a/src/qgitref.cpp b/src/qgitref.cpp
+index 5816aec..127ba1b 100644
+--- a/src/qgitref.cpp
++++ b/src/qgitref.cpp
+@@ -82,14 +82,14 @@ Repository Reference::owner() const
+ void Reference::setSymbolicTarget(const QString& target, const Signature &signature, const QString &message)
+ {
+     git_reference* rp;
+-    qGitThrow(git_reference_symbolic_set_target(&rp, data(), PathCodec::toLibGit2(target), signature.data(), message.toUtf8()));
++    qGitThrow(git_reference_symbolic_set_target(&rp, data(), PathCodec::toLibGit2(target), message.toUtf8()));
+     d = ptr_type(rp, git_reference_free);
+ }
+ 
+ void Reference::setTarget(const OId& oid, const Signature &signature, const QString &message)
+ {
+     git_reference* rp;
+-    qGitThrow(git_reference_set_target(&rp, data(), oid.constData(), signature.data(), message.toUtf8()));
++    qGitThrow(git_reference_set_target(&rp, data(), oid.constData(), message.toUtf8()));
+     d = ptr_type(rp, git_reference_free);
+ }
+ 
+diff --git a/src/qgitremote.cpp b/src/qgitremote.cpp
+index b3b7be8..ab13b89 100644
+--- a/src/qgitremote.cpp
++++ b/src/qgitremote.cpp
+@@ -68,7 +68,7 @@ void Remote::push(const QList<QString> &refSpecs, const Signature &signature, co
+     internal::StrArray refspecs(baRefSpecs);
+ 
+     git_push_options opts = GIT_PUSH_OPTIONS_INIT;
+-    qGitThrow(git_remote_push(data(), &refspecs.data(), &opts, signature.data(), message.isNull() ? NULL : message.toUtf8().constData()));
++    qGitThrow(git_remote_push(data(), &refspecs.data(), &opts));
+ }
+ 
+ git_remote* Remote::data() const
+diff --git a/src/qgitrepository.cpp b/src/qgitrepository.cpp
+index 2fb547a..d99c631 100644
+--- a/src/qgitrepository.cpp
++++ b/src/qgitrepository.cpp
+@@ -271,14 +271,14 @@ Object Repository::lookupRevision(const QString &revspec) const
+ Reference Repository::createRef(const QString& name, const LibQGit2::OId& oid, bool overwrite, const Signature &signature, const QString &message)
+ {
+     git_reference *ref = 0;
+-    qGitThrow(git_reference_create(&ref, SAFE_DATA, PathCodec::toLibGit2(name), oid.constData(), overwrite, signature.data(), message.toUtf8()));
++    qGitThrow(git_reference_create(&ref, SAFE_DATA, PathCodec::toLibGit2(name), oid.constData(), overwrite, message.toUtf8()));
+     return Reference(ref);
+ }
+ 
+ Reference Repository::createSymbolicRef(const QString& name, const QString& target, bool overwrite, const Signature &signature, const QString &message)
+ {
+     git_reference *ref = 0;
+-    qGitThrow(git_reference_symbolic_create(&ref, SAFE_DATA, PathCodec::toLibGit2(name), PathCodec::toLibGit2(target), overwrite, signature.data(), message.toUtf8()));
++    qGitThrow(git_reference_symbolic_create(&ref, SAFE_DATA, PathCodec::toLibGit2(name), PathCodec::toLibGit2(target), overwrite, message.toUtf8()));
+     return Reference(ref);
+ }
+ 
+@@ -344,7 +344,7 @@ Reference Repository::createBranch(const QString &branchName, const Commit &targ
+     }
+ 
+     git_reference *ref = NULL;
+-    qGitThrow(git_branch_create(&ref, SAFE_DATA, branchName.toUtf8(), usedTarget.data(), force, signature.data(), message.isNull() ? NULL : message.toUtf8().constData()));
++    qGitThrow(git_branch_create(&ref, SAFE_DATA, branchName.toUtf8(), usedTarget.data(), force));
+     return Reference(ref);
+ }
+ 
+@@ -463,9 +463,9 @@ void Repository::clone(const QString& url, const QString& path, const Signature
+ 
+     git_repository *repo = 0;
+     git_clone_options opts = GIT_CLONE_OPTIONS_INIT;
+-    opts.remote_callbacks = remoteCallbacks.rawCallbacks();
+-    opts.checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE_CREATE;
+-    opts.signature = const_cast<git_signature*>(signature.data());
++    //opts.remote_callbacks = remoteCallbacks.rawCallbacks();
++    //opts.checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE_CREATE;
++    //opts.signature = const_cast<git_signature*>(signature.data());
+     qGitEnsureValue(0, git_clone(&repo, url.toLatin1(), PathCodec::toLibGit2(path), &opts));
+ 
+     d_ptr->setData(repo);
+@@ -484,8 +484,8 @@ void Repository::remoteAdd(const QString& name, const QString& url, bool changeU
+     case GIT_OK:
+         if (QString::fromLatin1(git_remote_url(r)) != url) {
+             if (changeUrlIfExists) {
+-                qGitThrow(git_remote_set_url(r, url.toLatin1()));
+-                qGitThrow(git_remote_save(r));
++                qGitThrow(git_remote_set_url(data(), git_remote_url(r), url.toLatin1()));
++                //qGitThrow(git_remote_save(r));
+             } else {
+                 THROW("remote already exists");
+             }
+@@ -519,8 +519,9 @@ void Repository::fetch(const QString& name, const QString& head, const Signature
+         const QString refspec = QString("refs/heads/%2:refs/remotes/%1/%2").arg(name).arg(head);
+         refs.set(QList<QByteArray>() << refspec.toLatin1());
+     }
++    git_fetch_options const* opts = NULL;
+ 
+-    qGitThrow(git_remote_fetch(remote.data(), refs.count() > 0 ? &refs.data() : NULL, signature.data(), message.isNull() ? NULL : message.toUtf8().constData()));
++    qGitThrow(git_remote_fetch(remote.data(), refs.count() > 0 ? &refs.data() : NULL, opts, message.isNull() ? NULL : message.toUtf8().constData()));
+ }
+ 
+ 
+@@ -530,7 +531,7 @@ QStringList Repository::remoteBranches(const QString& remoteName)
+     qGitThrow(git_remote_lookup(&_remote, SAFE_DATA, remoteName.toLatin1()));
+     Remote remote(_remote, d_ptr->m_remote_credentials.value(remoteName));
+ 
+-    qGitThrow(git_remote_connect(remote.data(), GIT_DIRECTION_FETCH));
++    qGitThrow(git_remote_connect(remote.data(), GIT_DIRECTION_FETCH, NULL, NULL, NULL));
+     qGitEnsureValue(1, git_remote_connected(remote.data()));
+ 
+     /* List the heads on the remote */
+@@ -569,7 +570,7 @@ void Repository::checkoutRemote(const QString& branch, const CheckoutOptions &op
+     const QString refspec = "refs/remotes/" + remote + "/" + branch;
+     checkoutTree(lookupRevision(refspec), opts);
+ 
+-    qGitThrow(git_repository_set_head(SAFE_DATA, refspec.toLatin1(), signature.data(), message.toUtf8()));
++    qGitThrow(git_repository_set_head(SAFE_DATA, refspec.toLatin1()));
+ }
+ 
+ 
+@@ -592,7 +593,7 @@ void Repository::reset(const Object &target, ResetType type, const Signature &si
+         THROW("invalid reset type argument");
+     }
+ 
+-    qGitThrow(git_reset(SAFE_DATA, target.data(), resetType, NULL, const_cast<git_signature*>(signature.data()), message.isNull() ? NULL : message.toUtf8().constData()));
++    qGitThrow(git_reset(SAFE_DATA, target.data(), resetType, NULL));
+ }
+ 
+ Rebase Repository::rebase(const Reference &branch, const Reference &upstream, const Reference &onto, const RebaseOptions &opts, const Signature &signature)
+@@ -601,7 +602,7 @@ Rebase Repository::rebase(const Reference &branch, const Reference &upstream, co
+     internal::AnnotatedCommit commitBranch(*this, branch);
+     internal::AnnotatedCommit commitUpstream(*this, upstream);
+     internal::AnnotatedCommit commitOnto(*this, onto);
+-    qGitThrow(git_rebase_init(&rebase, data(), commitBranch.constData(), commitUpstream.constData(), commitOnto.constData(), signature.data(), opts.constData()));
++    qGitThrow(git_rebase_init(&rebase, data(), commitBranch.constData(), commitUpstream.constData(), commitOnto.constData(), opts.constData()));
+     return Rebase(rebase, opts);
+ }
+ 
